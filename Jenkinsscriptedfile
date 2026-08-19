@@ -1,0 +1,35 @@
+node{
+
+
+echo "The Job name is: ${env.JOB_NAME}"
+echo "The Build number number is: ${env.BUILD_NUMBER}"
+echo "The NODE is: ${env.Node_NAME}"
+echo "The Jenkins HD is: ${env.JENKINS_HOME}"
+
+properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '3')), pipelineTriggers([pollSCM('* * * * *')])])
+
+def mavenHome = tool name: 'Maven 3.9.15'
+
+stage('CheckOutCode'){
+git branch: 'development', credentialsId: 'cb5c30e8-653c-4e6d-a722-91b801bb8835', url: 'https://github.com/Prakshit2026/Maven-Web-Application.git'
+}
+
+stage('Build'){
+sh "${mavenHome}/bin/mvn clean package"
+}
+
+stage('ExecuteSonarQubeReport'){
+sh "${mavenHome}/bin/mvn clean sonar:sonar"
+}
+
+stage('UploadArtifactsIntoNexus'){
+sh "${mavenHome}/bin/mvn clean deploy"
+}
+
+stage("DeployAppIntoTomcatServer"){
+sshagent(['7a8a68a0-f2c4-4a2d-a317-9924a6013cff']) {
+sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@172.31.3.204:/opt/apache-tomcat-9.0.120/webapps/"    
+}
+}
+
+}
